@@ -4,7 +4,7 @@ CREATE TABLE Stock
     detail_id    INT,
     quantity     INT CHECK (quantity > 0),
     detail_name  VARCHAR(255),
-    FOREIGN KEY (detail_id) REFERENCES Parts (detail_id),
+    FOREIGN KEY (detail_id) REFERENCES Stock (detail_id),
     FOREIGN KEY (warehouse_id) REFERENCES Warehouse (warehouse_id)
 );
 
@@ -18,15 +18,15 @@ CREATE TABLE Engineers
 
 CREATE TABLE Orders
 (
-    order_id      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY AUTO_INCREMENT,
-    order_date    DATE,
-    order_status  VARCHAR(20) CHECK (order_status IN ('ожидает', 'в процессе', 'выполнено')),
-    detail_id     INT,
-    detail_name   VARCHAR(255),
-    total_price   DECIMAL(10, 2),
-    engineer_name VARCHAR(255),
-    FOREIGN KEY (detail_id) REFERENCES Parts (detail_id),
-    FOREIGN KEY (engineer_name) REFERENCES Engineers (engineer_name)
+    order_id     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY AUTO_INCREMENT,
+    order_date   DATE,
+    order_status VARCHAR(20) CHECK (order_status IN ('ожидает', 'в процессе', 'выполнено')),
+    detail_id    INT,
+    detail_name  VARCHAR(255),
+    total_price  DECIMAL(10, 2),
+    engineer_id  INT,
+    FOREIGN KEY (detail_id) REFERENCES Stock (detail_id),
+    FOREIGN KEY (engineer_id) REFERENCES Engineers (engineer_id)
 );
 
 CREATE TABLE Availability
@@ -34,7 +34,7 @@ CREATE TABLE Availability
     detail_id    INT,
     quantity     INT CHECK (quantity > 0),
     is_available BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (detail_id) REFERENCES Parts (detail_id)
+    FOREIGN KEY (detail_id) REFERENCES Stock (detail_id)
 );
 
 INSERT INTO Stock (warehouse_id, detail_id, quantity, detail_name)
@@ -56,11 +56,11 @@ ALTER TABLE Stock
            AND is_available = TRUE) >= Stock.quantity
         );
 
-SELECT Parts.detail_name,
+SELECT Stock.detail_name,
        SUM(Stock.quantity) AS total_quantity
 FROM Stock
          JOIN
-     Parts ON Stock.detail_id = Parts.detail_id
+     Stock ON Stock.detail_id = Parts.detail_id
 GROUP BY Parts.detail_name
 ORDER BY total_quantity DESC;
 
@@ -69,19 +69,19 @@ SELECT Orders.order_date,
        AVG(Orders.total_price) AS average_price
 FROM Orders
          JOIN
-     Parts ON Orders.detail_id = Parts.detail_id
+     Stock ON Orders.detail_id = Parts.detail_id
 WHERE (Orders.order_status = 'ожидает' OR Orders.order_status = 'в процессе')
 GROUP BY Orders.order_date
 HAVING COUNT(*) > 1
 ORDER BY order_count DESC;
 
 SELECT Availability.possibility_of_ordering,
-       Parts.detail_name,
+       Stock.detail_name,
        MAX(Availability.detail_id) AS max_detail_id
 FROM Availability
          JOIN
-     Parts ON Availability.detail_id = Parts.detail_id
-GROUP BY Possibility_of_ordering, Parts.detail_name
+     Stock ON Availability.detail_id = Stock.detail_id
+GROUP BY Possibility_of_ordering, Stock.detail_name
 ORDER BY max_detail_id;
 
 INSERT INTO Orders (order_date, order_status, detail_id, detail_name, engineer_name, total_price)
