@@ -70,3 +70,62 @@ SELECT *
 FROM authors
 WHERE NOT EXISTS (SELECT 1 FROM books_authors WHERE authors.author_id = books_authors.id_author)
    OR NOT EXISTS (SELECT 1 FROM books WHERE books_authors.id_book = books.book_id);
+
+ALTER TABLE books
+    ADD COLUMN page_count INT;
+
+SELECT *
+FROM books
+WHERE page_count > (SELECT AVG(page_count) FROM books);
+
+ALTER TABLE books
+    ADD COLUMN copies INT,
+ADD COLUMN price DECIMAL(10, 2),
+ADD COLUMN year_of_publication INT;
+
+SELECT *
+FROM books
+WHERE year_of_publication = (SELECT MAX(year_of_publication) FROM books);
+
+SELECT *
+FROM books AS b1
+WHERE (b1.price * b1.copies) > (SELECT SUM(price * copies)
+                                FROM books
+                                WHERE price * copies > 300000
+                                GROUP BY book_title
+                                HAVING SUM(price * copies) >= 300000);
+
+SELECT book_id, book_title, year_of_publication, ISBN, price, copies
+FROM books
+GROUP BY book_title
+HAVING (price * copies) > (SELECT SUM(price * copies) FROM books WHERE price * copies > 300000);
+
+WITH cte AS (SELECT book_title, SUM(price * copies) AS total_value
+             FROM books
+             GROUP BY book_title)
+SELECT *
+FROM books b
+         JOIN cte ON b.book_title = cte.book_title
+WHERE (price * copies) > total_value
+  AND total_value >= 300000;
+
+WITH cte AS (SELECT book_title, SUM(price * copies) AS total_value
+             FROM books
+             GROUP BY book_title)
+SELECT *
+FROM books b
+         JOIN cte ON b.book_title = cte.book_title
+WHERE (price * copies) > total_value
+  AND total_value >= 300000;
+
+SELECT book_title,
+       year_of_publication,
+       full_name,
+       CASE
+           WHEN year_of_publication >= (SELECT MAX(year_of_publication) FROM books) THEN 'Новая книга'
+           WHEN year_of_publication BETWEEN (SELECT MAX(year_of_publication) - 1 FROM books) AND (SELECT MAX(year_of_publication))
+               THEN 'Свежая книга'
+           ELSE 'Старая книга'
+           END AS book_status
+FROM books
+         JOIN authors ON books.author_id = authors.author_id;
